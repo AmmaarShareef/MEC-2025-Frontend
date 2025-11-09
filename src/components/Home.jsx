@@ -119,7 +119,7 @@ const Home = () => {
                   textShadow: '0 0 30px rgba(255, 68, 68, 0.3)',
                 }}
               >
-                Phoenix AID
+                Phoenix
               </Typography>
               <Typography
                 variant="h5"
@@ -141,7 +141,7 @@ const Home = () => {
                   fontSize: '1.1rem',
                 }}
               >
-                Phoenix AID is an advanced wildfire prediction and management platform designed for city infrastructure protection. 
+                Phoenix is an advanced wildfire prediction and management platform designed for city infrastructure protection. 
                 Leveraging satellite imagery analysis, real-time monitoring, and AI-powered detection, we help cities prepare for, 
                 respond to, and recover from wildfire events with unprecedented speed and accuracy.
               </Typography>
@@ -305,7 +305,7 @@ const Home = () => {
                 >
                   Our mission is to provide cities with cutting-edge wildfire management tools that enable proactive planning, 
                   rapid response, and effective resource allocation. By combining satellite technology, machine learning, and 
-                  real-time data analysis, Phoenix AID empowers emergency services to protect critical infrastructure and 
+                  real-time data analysis, Phoenix empowers emergency services to protect critical infrastructure and 
                   ensure public safety during wildfire events.
                 </Typography>
               </Box>

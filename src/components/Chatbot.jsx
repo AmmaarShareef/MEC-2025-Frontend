@@ -21,7 +21,7 @@ const Chatbot = ({ inputValue = '', onMessageSent, onExit, sendTrigger = 0 }) =>
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: 'Hello! I\'m your Phoenix AID assistant. I can help you with wildfire risk assessment, infrastructure protection recommendations, and emergency response coordination. How can I assist you today?',
+      content: 'Hello! I\'m your Phoenix assistant. I can help you with wildfire risk assessment, infrastructure protection recommendations, and emergency response coordination. How can I assist you today?',
     },
   ]);
   const [input, setInput] = useState('');

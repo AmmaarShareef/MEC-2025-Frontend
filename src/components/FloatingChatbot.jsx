@@ -174,7 +174,7 @@ const FloatingChatbot = () => {
       >
         <TextField
           fullWidth
-          placeholder="Ask Phoenix AID assistant about wildfires, safety, or infrastructure..."
+          placeholder="Ask Phoenix assistant about wildfires, safety, or infrastructure..."
           onClick={handleInputFocus}
           onFocus={handleInputFocus}
           onKeyPress={handleKeyPress}

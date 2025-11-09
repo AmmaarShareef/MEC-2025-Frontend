@@ -71,7 +71,7 @@ const Dashboard = () => {
         <Toolbar>
           <LocalFireDepartmentIcon sx={{ mr: 2 }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Phoenix AID - Wildfire Prediction & Management System
+            Phoenix - Wildfire Prediction & Management System
           </Typography>
           {status && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -186,7 +186,7 @@ const Dashboard = () => {
         {/* Footer Info */}
         <Box sx={{ mt: 4, textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary">
-            Phoenix AID - City Infrastructure Wildfire Management System
+            Phoenix - City Infrastructure Wildfire Management System
           </Typography>
         </Box>
       </Container>
