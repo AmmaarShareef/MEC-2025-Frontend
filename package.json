@@ -1,5 +1,5 @@
 {
-  "homepage": "https://AmmaarShareef.github.io/MEC-2025-Frontend",
+  "homepage": "https://AmmaarShareef.github.io/MEC-2025-Frontend/",
   "name": "pheonix-aid-frontend",
   "version": "1.0.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",
