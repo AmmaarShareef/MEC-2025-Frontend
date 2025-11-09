@@ -1,3 +1,10 @@
+/**
+ * Home page component.
+ * Displays the application introduction, feature cards, and mission statement
+ * with smooth fade-in animations and mouse-following gradient effects.
+ * 
+ * @author Ammaar Shareef
+ */
 import React, { useEffect, useState, useRef } from 'react';
 import {
   Box,

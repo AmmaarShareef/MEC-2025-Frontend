@@ -1,3 +1,10 @@
+/**
+ * Mouse-following gradient light effect component.
+ * Creates a radial gradient that follows the mouse cursor when hovering over
+ * the target element. Used for interactive visual effects on cards and boxes.
+ * 
+ * @author Ammaar Shareef
+ */
 import React, { useState, useEffect, useRef } from 'react';
 import { Box } from '@mui/material';
 

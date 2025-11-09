@@ -1,3 +1,10 @@
+/**
+ * Backend API integration utilities.
+ * Provides HTTP client configuration and functions for communicating with the Python backend,
+ * including image uploads, chat messages, wildfire data, and location safety information.
+ * 
+ * @author Ammaar Shareef
+ */
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:8000';

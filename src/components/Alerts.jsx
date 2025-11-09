@@ -1,3 +1,10 @@
+/**
+ * Wildfire alerts component.
+ * Allows users to submit wildfire alerts with validation and view/search
+ * current alerts in nearby areas. Includes form validation to prevent fake reports.
+ * 
+ * @author Ammaar Shareef
+ */
 import React, { useState, useRef } from 'react';
 import {
   Box,

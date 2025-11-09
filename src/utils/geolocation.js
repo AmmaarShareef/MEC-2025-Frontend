@@ -1,5 +1,7 @@
 /**
- * Geolocation utilities for automatic location detection
+ * Geolocation utilities for automatic location detection.
+ * 
+ * @author Ammaar Shareef
  */
 
 /**

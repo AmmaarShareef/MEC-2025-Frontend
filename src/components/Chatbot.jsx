@@ -1,3 +1,10 @@
+/**
+ * Chatbot component for displaying and managing chat messages.
+ * Handles message display, sending messages to backend, and maintaining chat history.
+ * Receives messages via props and triggers sends based on sendTrigger.
+ * 
+ * @author Ammaar Shareef
+ */
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,

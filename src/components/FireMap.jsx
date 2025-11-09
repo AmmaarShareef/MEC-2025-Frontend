@@ -1,3 +1,10 @@
+/**
+ * Interactive fire map component.
+ * Displays wildfires, user location, city search functionality, nearest shelters,
+ * air quality index, and safety information on an interactive Leaflet map.
+ * 
+ * @author Ammaar Shareef
+ */
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';

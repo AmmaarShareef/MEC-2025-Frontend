@@ -1,3 +1,10 @@
+/**
+ * Main application component.
+ * Sets up the Material-UI theme (dark mode with fire aesthetics), animated background gradient,
+ * and renders the Dashboard component.
+ * 
+ * @author Ammaar Shareef
+ */
 import React from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';

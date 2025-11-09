@@ -4,11 +4,13 @@ A React-based frontend application for wildfire prediction and management, focus
 
 ## Features
 
-- **AI Chatbot**: Sliding panel chatbot interface (bottom center) that smoothly appears when the input box is clicked. Sends messages to backend first, falls back to Gemini API if backend unavailable. Exit button sends 'exit' message before closing.
-- **Image Upload & Analysis**: Upload satellite/aerial imagery with automatic location detection and detailed analysis
-- **Interactive Fire Map**: Real-time map showing wildfires, user location, nearest shelters, air quality index, and safety information
-- **Automatic Location Detection**: GPS-based location tracking for image uploads and map features
-- **Backend Integration**: Seamless integration with Python backend for image processing and predictions
+- **AI Chatbot**: Floating chatbot interface (bottom center) that smoothly appears when the input box is clicked. Sends messages directly to backend for processing. Exit button sends 'exit' message before closing.
+- **Image Upload & Analysis**: Upload satellite/aerial imagery (128x128 pixels) with detailed AI-powered analysis, community contribution tracking, and impact stories
+- **Interactive Fire Map**: Real-time map showing wildfires, user location, city search functionality, nearest shelters, air quality index, and safety information
+- **Alerts System**: Submit and view wildfire alerts with validation, search functionality, and community reporting
+- **Home Dashboard**: Feature overview and mission statement with smooth animations
+- **Automatic Location Detection**: GPS-based location tracking for map features
+- **Backend Integration**: Seamless integration with Python backend for image processing, chat, and wildfire data
 
 ## Prerequisites
 
@@ -60,17 +62,19 @@ The UI is **fully interactive** right now! You can:
 ```
 src/
 ├── components/
-│   ├── Chatbot.jsx          # Gemini AI chatbot component
-│   ├── FloatingChatbot.jsx  # Floating chatbot input and dialog
-│   ├── ImageUpload.jsx      # Image upload and analysis component
-│   ├── FireMap.jsx          # Interactive map with wildfires and safety info
-│   └── Dashboard.jsx        # Main dashboard layout
+│   ├── Chatbot.jsx          # Chatbot component that handles message display and backend communication
+│   ├── FloatingChatbot.jsx  # Floating chatbot input box and sliding panel interface
+│   ├── ImageUpload.jsx      # Image upload, analysis, and community contribution component
+│   ├── FireMap.jsx          # Interactive map with wildfires, city search, and safety information
+│   ├── Alerts.jsx           # Wildfire alert submission and viewing component
+│   ├── Home.jsx             # Home page with features and mission statement
+│   ├── Dashboard.jsx        # Main dashboard layout with tab navigation
+│   └── MouseGradient.jsx   # Mouse-following gradient light effect component
 ├── utils/
-│   ├── api.js              # Backend API integration utilities
-│   ├── gemini.js           # Gemini AI integration utilities
-│   └── geolocation.js      # Location detection utilities
-├── App.jsx                 # Main app component with theme
-├── main.jsx                # React entry point
+│   ├── api.js              # Backend API integration utilities and HTTP client
+│   └── geolocation.js      # Location detection and GPS utilities
+├── App.jsx                 # Main app component with theme and animated background
+├── main.jsx                # React entry point and error handling
 └── index.css               # Global styles
 ```
 
@@ -118,10 +122,15 @@ The frontend is configured to communicate with the Python backend through:
 
 See `BACKEND_CONNECTION_GUIDE.md` for detailed backend integration instructions and example code.
 
+## Deployment
+
+The application is configured for GitHub Pages deployment. See `DEPLOYMENT.md` for detailed instructions.
+
 ## Notes
 
-- The Gemini API key is required for chatbot functionality. Without it, the chatbot will show an error.
+- The chatbot sends messages directly to the backend for processing
 - The backend should handle CORS if running on a different origin
-- Image uploads are limited to 10MB by default
+- Image uploads must be exactly 128x128 pixels
 - The application is designed for city infrastructure management, not end-user consumption
+- All features work with demo data when backend is not connected
 

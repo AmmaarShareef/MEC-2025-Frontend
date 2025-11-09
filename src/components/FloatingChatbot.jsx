@@ -1,3 +1,11 @@
+/**
+ * Floating chatbot interface component.
+ * Provides a persistent text input box at the bottom of the screen that expands
+ * into a sliding chat panel when clicked. Manages the input state and triggers
+ * message sending to the Chatbot component.
+ * 
+ * @author Ammaar Shareef
+ */
 import React, { useState } from 'react';
 import {
   Box,

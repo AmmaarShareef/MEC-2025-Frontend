@@ -1,3 +1,10 @@
+/**
+ * Image upload and analysis component.
+ * Handles satellite/aerial image uploads (128x128 pixels), displays analysis results,
+ * shows community contribution information, impact stories, and previous uploads history.
+ * 
+ * @author Ammaar Shareef
+ */
 import React, { useState, useRef } from 'react';
 import {
   Box,

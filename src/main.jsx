@@ -1,3 +1,9 @@
+/**
+ * React application entry point.
+ * Initializes the React root and renders the App component with error handling.
+ * 
+ * @author Ammaar Shareef
+ */
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'

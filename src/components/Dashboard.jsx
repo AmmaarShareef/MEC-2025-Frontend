@@ -1,3 +1,10 @@
+/**
+ * Main dashboard component with tab navigation.
+ * Manages the overall layout, navigation tabs (Home, Analysis, Map, Alerts),
+ * system status display, and renders the FloatingChatbot component.
+ * 
+ * @author Ammaar Shareef
+ */
 import React, { useState, useEffect } from 'react';
 import {
   Box,
