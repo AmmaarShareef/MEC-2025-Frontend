@@ -392,6 +392,41 @@ const ImageUpload = () => {
             </Alert>
           )}
 
+          {/* File Input - Shown when upload box is open but no file selected */}
+          {showUploadBox && !selectedFile && (
+            <Box sx={{ mb: 3 }}>
+              <input
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="file-upload-input"
+                type="file"
+                onChange={handleFileSelect}
+              />
+              <label htmlFor="file-upload-input">
+                <Button
+                  variant="outlined"
+                  component="span"
+                  size="large"
+                  fullWidth
+                  startIcon={<CloudUploadIcon />}
+                  sx={{
+                    py: 2,
+                    borderStyle: 'dashed',
+                    borderWidth: 2,
+                    borderColor: 'primary.main',
+                    '&:hover': {
+                      borderStyle: 'dashed',
+                      borderWidth: 2,
+                      bgcolor: 'rgba(255, 68, 68, 0.1)',
+                    },
+                  }}
+                >
+                  Choose Image File (128x128 pixels)
+                </Button>
+              </label>
+            </Box>
+          )}
+
           {/* Image Preview and Analysis - Only shown when file is selected */}
           {showUploadBox && selectedFile && (
             <Grid container spacing={3}>
@@ -430,10 +465,32 @@ const ImageUpload = () => {
                         >
                           {uploading ? 'Submitting...' : 'Submit'}
                         </Button>
-                        <Button variant="text" onClick={handleClear} color="error" fullWidth>
+                        <Button variant="outlined" onClick={handleClear} fullWidth>
                           Clear
                         </Button>
                       </Box>
+                      {/* Upload Another Image Button - After successful upload */}
+                      {result && (
+                        <Box sx={{ mt: 2 }}>
+                          <input
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            id="file-upload-input-again"
+                            type="file"
+                            onChange={handleFileSelect}
+                          />
+                          <label htmlFor="file-upload-input-again">
+                            <Button
+                              variant="outlined"
+                              component="span"
+                              fullWidth
+                              startIcon={<ImageIcon />}
+                            >
+                              Upload Another Image
+                            </Button>
+                          </label>
+                        </Box>
+                      )}
                     </CardContent>
                   </Box>
                 </Card>
