@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -14,13 +14,18 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Divider,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ImageIcon from '@mui/icons-material/Image';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import { uploadImage, uploadImageWithLocation } from '../utils/api';
-import { getCurrentLocation } from '../utils/geolocation';
+import InfoIcon from '@mui/icons-material/Info';
+import HistoryIcon from '@mui/icons-material/History';
+import PeopleIcon from '@mui/icons-material/People';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { uploadImage } from '../utils/api';
+import MouseGradient from './MouseGradient';
 
 const ImageUpload = () => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -29,10 +34,17 @@ const ImageUpload = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [analysis, setAnalysis] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
-  const [locationEnabled, setLocationEnabled] = useState(true);
-  const [gettingLocation, setGettingLocation] = useState(false);
   const [showDemoAnalysis, setShowDemoAnalysis] = useState(false);
+  const [showUploadBox, setShowUploadBox] = useState(false);
+  const [previousUploads, setPreviousUploads] = useState([]);
+
+  // Refs for mouse gradient
+  const communityBoxRef = useRef(null);
+  const mainPaperRef = useRef(null);
+  const infoBoxRef = useRef(null);
+  const uploadCardRef = useRef(null);
+  const previousUploadsRef = useRef(null);
+  const impactSectionRef = useRef(null);
 
   // Demo analysis data
   const getDemoAnalysis = () => {
@@ -115,45 +127,34 @@ const ImageUpload = () => {
         return;
       }
       
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        setError('File size must be less than 10MB');
-        return;
-      }
-
-      setSelectedFile(file);
-      setError(null);
-      setResult(null);
-      setAnalysis(null);
-      setShowDemoAnalysis(true); // Show demo analysis automatically
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result);
+      // Validate image dimensions (128x128)
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        if (img.width !== 128 || img.height !== 128) {
+          setError(`Image must be exactly 128x128 pixels. Current size: ${img.width}x${img.height}`);
+          return;
+        }
+        
+        setSelectedFile(file);
+        setError(null);
+        setResult(null);
+        setAnalysis(null);
+        setShowDemoAnalysis(true);
+        
+        // Create preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreview(reader.result);
+        };
+        reader.readAsDataURL(file);
       };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Get user location when component mounts or when location is enabled
-  useEffect(() => {
-    if (locationEnabled && !userLocation) {
-      getLocation();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locationEnabled]);
-
-  const getLocation = async () => {
-    setGettingLocation(true);
-    try {
-      const location = await getCurrentLocation();
-      setUserLocation(location);
-    } catch (error) {
-      console.warn('Could not get location:', error.message);
-      setLocationEnabled(false);
-    } finally {
-      setGettingLocation(false);
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        setError('Invalid image file');
+      };
+      img.src = objectUrl;
     }
   };
 
@@ -165,35 +166,31 @@ const ImageUpload = () => {
     setResult(null);
 
     try {
-      let uploadResponse;
-      
-      // Upload with location if available and enabled
-      if (locationEnabled && userLocation) {
-        uploadResponse = await uploadImageWithLocation(
-          selectedFile,
-          userLocation,
-          {
-            timestamp: new Date().toISOString(),
-          }
-        );
-      } else {
-        // Upload without location
-        uploadResponse = await uploadImage(selectedFile, {
-          timestamp: new Date().toISOString(),
-        });
-      }
+      // Upload without location
+      const uploadResponse = await uploadImage(selectedFile, {
+        timestamp: new Date().toISOString(),
+      });
 
       setResult({
         upload: uploadResponse,
         message: 'Image uploaded successfully',
       });
 
+      // Add to previous uploads
+      const newUpload = {
+        id: Date.now(),
+        filename: selectedFile.name,
+        timestamp: new Date().toISOString(),
+        description: uploadResponse.description || uploadResponse.analysis || 'No description available',
+        preview: preview,
+      };
+      setPreviousUploads(prev => [newUpload, ...prev]);
+
       // Replace demo analysis with backend response if available
       if (uploadResponse.analysis) {
         setAnalysis(uploadResponse.analysis);
         setShowDemoAnalysis(false);
       } else if (uploadResponse.prediction) {
-        // If backend returns prediction, format it as analysis
         const formattedAnalysis = formatPredictionAsAnalysis(uploadResponse.prediction);
         setAnalysis(formattedAnalysis);
         setShowDemoAnalysis(false);
@@ -213,203 +210,425 @@ const ImageUpload = () => {
     setAnalysis(null);
     setError(null);
     setShowDemoAnalysis(false);
+    setShowUploadBox(false);
   };
 
+  // Mock data for impact stories
+  const impactStories = [
+    {
+      id: 1,
+      title: 'Early Detection Saves Northern Valley',
+      date: '2024-01-15',
+      impact: 'A user-uploaded satellite image detected smoke patterns 3 hours before official alerts. Emergency services were able to evacuate 200+ residents and protect critical infrastructure.',
+      location: 'Northern Valley Region',
+    },
+    {
+      id: 2,
+      title: 'Community Alert Prevents Major Disaster',
+      date: '2024-02-03',
+      impact: 'Multiple community uploads helped identify a rapidly spreading fire near power transmission lines. Quick response prevented a potential city-wide power outage.',
+      location: 'East Industrial Zone',
+    },
+    {
+      id: 3,
+      title: 'Satellite Data Aids Evacuation Planning',
+      date: '2024-02-20',
+      impact: 'User-contributed imagery provided real-time visibility of fire spread patterns, enabling emergency services to optimize evacuation routes and save valuable time.',
+      location: 'Southwest Residential Area',
+    },
+  ];
+
   return (
-    <Paper 
-      elevation={4} 
-      sx={{ 
-        p: 3, 
-        borderRadius: 2,
-        bgcolor: 'background.paper',
-        border: '1px solid rgba(255, 68, 68, 0.2)',
-      }}
-    >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <ImageIcon /> Satellite Image Upload & Analysis
-        </Typography>
-        {locationEnabled && userLocation && (
-          <Chip
-            icon={<LocationOnIcon />}
-            label={`Location: ${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`}
-            color="primary"
-            size="small"
-          />
-        )}
-        {gettingLocation && (
-          <Chip
-            icon={<CircularProgress size={16} />}
-            label="Getting location..."
-            size="small"
-          />
-        )}
-      </Box>
-
-      {/* Upload Area */}
-      <Box sx={{ mb: 3 }}>
-        <input
-          accept="image/*"
-          style={{ display: 'none' }}
-          id="image-upload-input"
-          type="file"
-          onChange={handleFileSelect}
-        />
-        <label htmlFor="image-upload-input">
-          <Button
-            variant="outlined"
-            component="span"
-            startIcon={<CloudUploadIcon />}
-            fullWidth
-            sx={{ py: 2, borderStyle: 'dashed' }}
-          >
-            {selectedFile ? 'Change Image' : 'Select Satellite/Aerial Image'}
-          </Button>
-        </label>
-      </Box>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-
-      {selectedFile && (
-        <Grid container spacing={3}>
-          {/* Preview */}
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardMedia
-                component="img"
-                height="300"
-                image={preview}
-                alt="Selected image"
-                sx={{ objectFit: 'contain', bgcolor: '#f5f5f5' }}
-              />
-              <CardContent>
-                <Typography variant="body2" color="text.secondary">
-                  {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
-                </Typography>
-                <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  <Button
-                    variant="contained"
-                    onClick={handleUpload}
-                    disabled={uploading}
-                    startIcon={uploading ? <CircularProgress size={16} /> : <CloudUploadIcon />}
-                    fullWidth
-                    size="large"
-                  >
-                    {uploading ? 'Submitting...' : 'Submit'}
-                  </Button>
-                  <Button variant="text" onClick={handleClear} color="error" fullWidth>
-                    Clear
-                  </Button>
+    <Box>
+      {/* Community Contribution Box - Above Upload */}
+      <Paper
+        ref={communityBoxRef}
+        elevation={4}
+        sx={{
+          p: 4,
+          mb: 3,
+          borderRadius: 2,
+          bgcolor: 'background.paper',
+          border: '1px solid rgba(255, 68, 68, 0.2)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <MouseGradient targetRef={communityBoxRef} enabled={true} />
+        <Box sx={{ position: 'relative', zIndex: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+            <PeopleIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>
+              Help Improve Our Database & Alert Others
+            </Typography>
+          </Box>
+          <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.8, color: 'text.secondary' }}>
+            Your contributions make a real difference! By uploading satellite imagery and wildfire-related images, you're helping to:
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                <CheckCircleIcon sx={{ color: 'primary.main', mt: 0.5 }} />
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                    Enhance Detection Accuracy
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Your uploads help train and improve our AI models, making wildfire detection faster and more accurate.
+                  </Typography>
                 </Box>
-              </CardContent>
-            </Card>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                <NotificationsIcon sx={{ color: 'primary.main', mt: 0.5 }} />
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                    Alert Communities
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Share critical information that can help alert nearby communities and emergency services about potential wildfire threats.
+                  </Typography>
+                </Box>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                <ImageIcon sx={{ color: 'primary.main', mt: 0.5 }} />
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                    Build Comprehensive Database
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Contribute to a growing database of wildfire imagery that helps researchers and emergency responders better understand fire patterns.
+                  </Typography>
+                </Box>
+              </Box>
+            </Grid>
           </Grid>
+        </Box>
+      </Paper>
 
-          {/* Results */}
-          <Grid item xs={12} md={6}>
-            <Box sx={{ maxHeight: '500px', overflow: 'auto' }}>
-              {result && (
-                <Paper sx={{ p: 2, mb: 2, bgcolor: '#e3f2fd' }}>
-                  <Typography variant="h6" gutterBottom>
-                    Upload Result
+      <Paper 
+        ref={mainPaperRef}
+        elevation={4} 
+        sx={{ 
+          p: 3, 
+          borderRadius: 2,
+          bgcolor: 'background.paper',
+          border: '1px solid rgba(255, 68, 68, 0.2)',
+          mb: 3,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <MouseGradient targetRef={mainPaperRef} enabled={true} />
+        <Box sx={{ position: 'relative', zIndex: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ImageIcon /> Satellite Image Upload & Analysis
+            </Typography>
+          </Box>
+
+          {/* Upload Image Button */}
+          {!showUploadBox && (
+            <Box sx={{ textAlign: 'center', mb: 3 }}>
+              <Button
+                variant="contained"
+                size="large"
+                startIcon={<CloudUploadIcon />}
+                onClick={() => setShowUploadBox(true)}
+                sx={{
+                  px: 4,
+                  py: 1.5,
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                }}
+              >
+                Upload Image
+              </Button>
+            </Box>
+          )}
+
+          {/* Info Box */}
+          {showUploadBox && (
+            <Paper
+              ref={infoBoxRef}
+              elevation={2}
+              sx={{
+                p: 3,
+                mb: 3,
+                bgcolor: 'background.default',
+                border: '1px solid rgba(255, 68, 68, 0.3)',
+                borderRadius: 2,
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              <MouseGradient targetRef={infoBoxRef} enabled={true} />
+              <Box sx={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                <InfoIcon sx={{ color: 'primary.main', mt: 0.5 }} />
+                <Box>
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    Upload Instructions
                   </Typography>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {result.message}
+                  <Typography variant="body2" sx={{ mb: 1, lineHeight: 1.8 }}>
+                    <strong>What you can upload:</strong> Satellite imagery, aerial photographs, or any wildfire-related images for analysis.
                   </Typography>
-                  {result.prediction && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="subtitle2" gutterBottom>
-                        Prediction:
+                  <Typography variant="body2" sx={{ mb: 1, lineHeight: 1.8 }}>
+                    <strong>Image size requirement:</strong> Images must be exactly <strong>128x128 pixels</strong> only. Please resize your image before uploading.
+                  </Typography>
+                  <Typography variant="body2" sx={{ lineHeight: 1.8 }}>
+                    <strong>What happens when you upload:</strong> Your image will be analyzed using AI-powered wildfire detection algorithms. The system will assess fire risk indicators, infrastructure vulnerabilities, terrain analysis, and provide recommendations for emergency response planning.
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
+
+          {/* Image Preview and Analysis - Only shown when file is selected */}
+          {showUploadBox && selectedFile && (
+            <Grid container spacing={3}>
+              {/* Preview */}
+              <Grid item xs={12} md={6}>
+                <Card 
+                  ref={uploadCardRef}
+                  sx={{ 
+                    bgcolor: 'background.default', 
+                    border: '1px solid rgba(255, 68, 68, 0.2)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <MouseGradient targetRef={uploadCardRef} enabled={true} />
+                  <Box sx={{ position: 'relative', zIndex: 2 }}>
+                    <CardMedia
+                      component="img"
+                      height="300"
+                      image={preview}
+                      alt="Selected image"
+                      sx={{ objectFit: 'contain', bgcolor: '#1a1a1a' }}
+                    />
+                    <CardContent>
+                      <Typography variant="body2" color="text.secondary">
+                        {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                      </Typography>
+                      <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        <Button
+                          variant="contained"
+                          onClick={handleUpload}
+                          disabled={uploading}
+                          startIcon={uploading ? <CircularProgress size={16} /> : <CloudUploadIcon />}
+                          fullWidth
+                          size="large"
+                        >
+                          {uploading ? 'Submitting...' : 'Submit'}
+                        </Button>
+                        <Button variant="text" onClick={handleClear} color="error" fullWidth>
+                          Clear
+                        </Button>
+                      </Box>
+                    </CardContent>
+                  </Box>
+                </Card>
+              </Grid>
+
+              {/* Results */}
+              <Grid item xs={12} md={6}>
+                <Box sx={{ maxHeight: '500px', overflow: 'auto' }}>
+                  {result && (
+                    <Paper sx={{ p: 2, mb: 2, bgcolor: 'background.default', border: '1px solid rgba(255, 68, 68, 0.2)' }}>
+                      <Typography variant="h6" gutterBottom>
+                        Upload Result
                       </Typography>
                       <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                        {typeof result.prediction === 'object'
-                          ? JSON.stringify(result.prediction, null, 2)
-                          : result.prediction}
+                        {result.message}
                       </Typography>
-                    </Box>
+                    </Paper>
                   )}
-                </Paper>
-              )}
 
-              {(analysis || showDemoAnalysis) && (
-                <Box sx={{ mb: 2 }}>
-                  <Accordion defaultExpanded={false} sx={{ boxShadow: 2 }}>
-                    <AccordionSummary
-                      expandIcon={<ExpandMoreIcon />}
-                      sx={{
-                        bgcolor: '#f3e5f5',
-                        '&:hover': {
-                          bgcolor: '#e8d5e8',
-                        },
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                        <ImageIcon color="primary" />
-                        <Typography variant="h6" sx={{ flexGrow: 1 }}>
-                          Detailed Image Analysis
-                        </Typography>
-                        {showDemoAnalysis && !analysis && (
-                          <Chip label="Demo Data" size="small" color="info" />
-                        )}
-                      </Box>
-                    </AccordionSummary>
-                    <AccordionDetails sx={{ bgcolor: 'white', pt: 3 }}>
-                      <Box
-                        sx={{
-                          '& > *': { mb: 2 },
-                        }}
-                      >
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
-                            whiteSpace: 'pre-wrap',
-                            lineHeight: 1.8,
-                            '& strong': {
-                              color: 'primary.main',
-                              fontWeight: 600,
+                  {(analysis || showDemoAnalysis) && (
+                    <Box sx={{ mb: 2 }}>
+                      <Accordion defaultExpanded={false} sx={{ boxShadow: 2, bgcolor: 'background.paper' }}>
+                        <AccordionSummary
+                          expandIcon={<ExpandMoreIcon />}
+                          sx={{
+                            bgcolor: 'background.default',
+                            '&:hover': {
+                              bgcolor: 'rgba(255, 68, 68, 0.1)',
                             },
                           }}
-                          component="div"
-                          dangerouslySetInnerHTML={{
-                            __html: (analysis || getDemoAnalysis())
-                              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                              .replace(/\n\n/g, '<br/><br/>')
-                              .replace(/\n/g, '<br/>')
-                          }}
-                        />
-                      </Box>
-                    </AccordionDetails>
-                  </Accordion>
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                            <ImageIcon color="primary" />
+                            <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                              Detailed Image Analysis
+                            </Typography>
+                            {showDemoAnalysis && !analysis && (
+                              <Chip label="Demo Data" size="small" color="info" />
+                            )}
+                          </Box>
+                        </AccordionSummary>
+                        <AccordionDetails sx={{ bgcolor: 'background.default', pt: 3 }}>
+                          <Typography 
+                            variant="body2" 
+                            sx={{ 
+                              whiteSpace: 'pre-wrap',
+                              lineHeight: 1.8,
+                              '& strong': {
+                                color: 'primary.main',
+                                fontWeight: 600,
+                              },
+                            }}
+                            component="div"
+                            dangerouslySetInnerHTML={{
+                              __html: (analysis || getDemoAnalysis())
+                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                .replace(/\n\n/g, '<br/><br/>')
+                                .replace(/\n/g, '<br/>')
+                            }}
+                          />
+                        </AccordionDetails>
+                      </Accordion>
+                    </Box>
+                  )}
+
+                  {!result && !analysis && !showDemoAnalysis && (
+                    <Paper sx={{ p: 3, textAlign: 'center', bgcolor: 'background.default' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Upload an image and click "Submit" to see results
+                      </Typography>
+                    </Paper>
+                  )}
                 </Box>
-              )}
-
-              {!result && !analysis && !showDemoAnalysis && (
-                <Paper sx={{ p: 3, textAlign: 'center', bgcolor: '#fafafa' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Upload an image and click "Submit" to see results
-                  </Typography>
-                </Paper>
-              )}
-            </Box>
-          </Grid>
-        </Grid>
-      )}
-
-      {!selectedFile && (
-        <Box sx={{ textAlign: 'center', py: 4, bgcolor: '#fafafa', borderRadius: 1 }}>
-          <ImageIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-          <Typography variant="body2" color="text.secondary">
-            Select a satellite or aerial image to begin analysis
-          </Typography>
+              </Grid>
+            </Grid>
+          )}
         </Box>
-      )}
-    </Paper>
+      </Paper>
+
+      {/* Impact Stories Section - How uploads helped */}
+      <Paper
+        ref={impactSectionRef}
+        elevation={4}
+        sx={{
+          p: 3,
+          mb: 3,
+          borderRadius: 2,
+          bgcolor: 'background.paper',
+          border: '1px solid rgba(255, 68, 68, 0.2)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <MouseGradient targetRef={impactSectionRef} enabled={true} />
+        <Box sx={{ position: 'relative', zIndex: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+            <CheckCircleIcon sx={{ color: 'primary.main' }} />
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>
+              How Your Uploads Helped in Wildfires
+            </Typography>
+          </Box>
+          <Divider sx={{ mb: 3 }} />
+          <Grid container spacing={3}>
+            {impactStories.map((story) => (
+              <Grid item xs={12} md={4} key={story.id}>
+                <Card sx={{ bgcolor: 'background.default', border: '1px solid rgba(255, 68, 68, 0.2)', height: '100%' }}>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                      {story.title}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                      {story.date} • {story.location}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
+                      {story.impact}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      </Paper>
+
+      {/* Previous Uploads Section */}
+      <Paper
+        ref={previousUploadsRef}
+        elevation={4}
+        sx={{
+          p: 3,
+          borderRadius: 2,
+          bgcolor: 'background.paper',
+          border: '1px solid rgba(255, 68, 68, 0.2)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <MouseGradient targetRef={previousUploadsRef} enabled={true} />
+        <Box sx={{ position: 'relative', zIndex: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+            <HistoryIcon sx={{ color: 'primary.main' }} />
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>
+              Previous Uploads
+            </Typography>
+          </Box>
+          <Divider sx={{ mb: 3 }} />
+          {previousUploads.length > 0 ? (
+            <Grid container spacing={3}>
+              {previousUploads.map((upload) => (
+                <Grid item xs={12} sm={6} md={4} key={upload.id}>
+                  <Card sx={{ bgcolor: 'background.default', border: '1px solid rgba(255, 68, 68, 0.2)' }}>
+                    <CardMedia
+                      component="img"
+                      height="128"
+                      image={upload.preview}
+                      alt={upload.filename}
+                      sx={{ objectFit: 'contain', bgcolor: '#1a1a1a' }}
+                    />
+                    <CardContent>
+                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+                        {upload.filename}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                        {new Date(upload.timestamp).toLocaleString()}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {upload.description}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <HistoryIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+              <Typography variant="body2" color="text.secondary">
+                No previous uploads yet. Upload your first image to get started!
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      </Paper>
+    </Box>
   );
 };
 
 export default ImageUpload;
-

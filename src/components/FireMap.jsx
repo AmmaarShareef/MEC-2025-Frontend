@@ -14,6 +14,8 @@ import {
   IconButton,
   Tooltip,
   Grid,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -21,8 +23,11 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import HomeIcon from '@mui/icons-material/Home';
 import AirIcon from '@mui/icons-material/Air';
 import WarningIcon from '@mui/icons-material/Warning';
+import SearchIcon from '@mui/icons-material/Search';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { getCurrentLocation, watchLocation, stopWatchingLocation } from '../utils/geolocation';
 import { getWildfiresNearLocation, getAllActiveWildfires, getLocationSafetyInfo } from '../utils/api';
+import MouseGradient from './MouseGradient';
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default marker icons in React-Leaflet
@@ -66,12 +71,12 @@ const createFireIcon = (intensity) => {
   });
 };
 
-// Component to center map on user location
+// Component to center map on location
 function MapCenter({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
-    if (center) {
-      map.setView(center, zoom);
+    if (center && center.length === 2 && !isNaN(center[0]) && !isNaN(center[1])) {
+      map.setView(center, zoom, { animate: true, duration: 0.5 });
     }
   }, [center, zoom, map]);
   return null;
@@ -86,6 +91,9 @@ const FireMap = () => {
   const [mapCenter, setMapCenter] = useState([37.7749, -122.4194]); // Default: San Francisco
   const [mapZoom, setMapZoom] = useState(10);
   const [safetyInfo, setSafetyInfo] = useState(null);
+  const [searchCity, setSearchCity] = useState('');
+  const [searchingCity, setSearchingCity] = useState(false);
+  const [searchedLocation, setSearchedLocation] = useState(null);
   const watchIdRef = useRef(null);
 
   // Get user location on mount
@@ -100,17 +108,23 @@ const FireMap = () => {
 
   // Fetch wildfires and safety info when location is available
   useEffect(() => {
-    if (userLocation) {
-      fetchWildfires();
-      fetchSafetyInfo();
+    const locationToUse = searchedLocation || userLocation;
+    if (locationToUse) {
+      // Fetch immediately
+      const fetchData = async () => {
+        await fetchWildfires();
+        await fetchSafetyInfo();
+      };
+      fetchData();
+      
       // Set up periodic updates every 30 seconds
       const interval = setInterval(() => {
-        fetchWildfires();
-        fetchSafetyInfo();
+        fetchData();
       }, 30000);
       return () => clearInterval(interval);
     }
-  }, [userLocation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocation, searchedLocation]);
 
   const requestLocation = async () => {
     setLoading(true);
@@ -140,11 +154,12 @@ const FireMap = () => {
     
     try {
       let data;
-      if (userLocation) {
-        // Fetch wildfires near user location (50km radius)
-        data = await getWildfiresNearLocation(userLocation.lat, userLocation.lng, 50);
+      const locationToUse = searchedLocation || userLocation;
+      if (locationToUse) {
+        // Fetch wildfires near location (50km radius)
+        data = await getWildfiresNearLocation(locationToUse.lat, locationToUse.lng, 50);
       } else {
-        // Fetch all active wildfires if no user location
+        // Fetch all active wildfires if no location
         data = await getAllActiveWildfires();
       }
       
@@ -162,21 +177,92 @@ const FireMap = () => {
       setWildfireError(error.userMessage || error.message || 'Failed to fetch wildfire data');
       // Set mock data for demonstration if backend is not available
       if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-        setWildfires(getMockWildfires());
+        const locationToUse = searchedLocation || userLocation;
+        if (locationToUse) {
+          setWildfires(getMockWildfires(locationToUse));
+        } else {
+          setWildfires([]);
+        }
       }
     }
   };
 
   const fetchSafetyInfo = async () => {
-    if (!userLocation) return;
+    const locationToUse = searchedLocation || userLocation;
+    if (!locationToUse) return;
     
     try {
-      const info = await getLocationSafetyInfo(userLocation.lat, userLocation.lng);
+      const info = await getLocationSafetyInfo(locationToUse.lat, locationToUse.lng);
       setSafetyInfo(info);
     } catch (error) {
       console.error('Failed to fetch safety info:', error);
       // Always use mock data for demo
-      setSafetyInfo(getMockSafetyInfo(userLocation.lat, userLocation.lng));
+      setSafetyInfo(getMockSafetyInfo(locationToUse.lat, locationToUse.lng));
+    }
+  };
+
+  // Simple city geocoding (mock - in production, use a real geocoding API)
+  const geocodeCity = async (cityName) => {
+    // Mock city coordinates - in production, use a geocoding service
+    const cityCoordinates = {
+      'san francisco': { lat: 37.7749, lng: -122.4194 },
+      'los angeles': { lat: 34.0522, lng: -118.2437 },
+      'san diego': { lat: 32.7157, lng: -117.1611 },
+      'sacramento': { lat: 38.5816, lng: -121.4944 },
+      'oakland': { lat: 37.8044, lng: -122.2712 },
+      'fresno': { lat: 36.7378, lng: -119.7871 },
+      'san jose': { lat: 37.3382, lng: -121.8863 },
+      'long beach': { lat: 33.7701, lng: -118.1937 },
+      'anaheim': { lat: 33.8366, lng: -117.9143 },
+      'santa ana': { lat: 33.7455, lng: -117.8677 },
+    };
+
+    const normalizedName = cityName.toLowerCase().trim();
+    const coords = cityCoordinates[normalizedName];
+    
+    if (coords) {
+      return coords;
+    }
+    
+    // If not found in mock data, return a default location (San Francisco)
+    // In production, you would call a real geocoding API here
+    throw new Error('City not found. Please try: San Francisco, Los Angeles, San Diego, Sacramento, Oakland, Fresno, San Jose, Long Beach, Anaheim, or Santa Ana');
+  };
+
+  const handleCitySearch = async () => {
+    if (!searchCity.trim()) return;
+
+    setSearchingCity(true);
+    setLocationError(null);
+    
+    try {
+      const coords = await geocodeCity(searchCity);
+      const newLocation = { lat: coords.lat, lng: coords.lng };
+      setSearchedLocation(newLocation);
+      setMapCenter([coords.lat, coords.lng]);
+      setMapZoom(12);
+      
+      // Immediately generate and set demo fires for the searched city
+      const demoFires = getMockWildfires(newLocation);
+      setWildfires(demoFires);
+      setWildfireError(null);
+      
+      // Also fetch safety info for the new location
+      setSafetyInfo(getMockSafetyInfo(coords.lat, coords.lng));
+    } catch (error) {
+      setLocationError(error.message);
+    } finally {
+      setSearchingCity(false);
+    }
+  };
+
+  const handleResetToCurrentLocation = () => {
+    setSearchedLocation(null);
+    setSearchCity('');
+    if (userLocation) {
+      setMapCenter([userLocation.lat, userLocation.lng]);
+      setMapZoom(13);
+      // useEffect will handle fetching when searchedLocation becomes null
     }
   };
 
@@ -213,15 +299,15 @@ const FireMap = () => {
   };
 
   // Mock data for demonstration when backend is not available
-  const getMockWildfires = () => {
-    if (!userLocation) return [];
+  const getMockWildfires = (location) => {
+    if (!location) return [];
     
-    // Generate some mock fires around user location
+    // Generate some mock fires around location
     return [
       {
         id: 1,
-        lat: userLocation.lat + 0.05,
-        lng: userLocation.lng + 0.05,
+        lat: location.lat + 0.05,
+        lng: location.lng + 0.05,
         intensity: 'high',
         confidence: 0.85,
         area: 'North Region',
@@ -230,8 +316,8 @@ const FireMap = () => {
       },
       {
         id: 2,
-        lat: userLocation.lat - 0.03,
-        lng: userLocation.lng + 0.08,
+        lat: location.lat - 0.03,
+        lng: location.lng + 0.08,
         intensity: 'medium',
         confidence: 0.72,
         area: 'East Region',
@@ -240,8 +326,8 @@ const FireMap = () => {
       },
       {
         id: 3,
-        lat: userLocation.lat + 0.08,
-        lng: userLocation.lng - 0.04,
+        lat: location.lat + 0.08,
+        lng: location.lng - 0.04,
         intensity: 'low',
         confidence: 0.65,
         area: 'South Region',
@@ -265,8 +351,13 @@ const FireMap = () => {
     return intensity.charAt(0).toUpperCase() + intensity.slice(1);
   };
 
+  const mapPaperRef = React.useRef(null);
+  const safetyCardRef = React.useRef(null);
+  const legendCardRef = React.useRef(null);
+
   return (
     <Paper 
+      ref={mapPaperRef}
       elevation={4} 
       sx={{ 
         p: 3, 
@@ -274,8 +365,62 @@ const FireMap = () => {
         height: '100%',
         bgcolor: 'background.paper',
         border: '1px solid rgba(255, 68, 68, 0.2)',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
+      <MouseGradient targetRef={mapPaperRef} enabled={true} />
+      <Box sx={{ position: 'relative', zIndex: 2 }}>
+      {/* City Search */}
+      <Box sx={{ mb: 2 }}>
+        <TextField
+          fullWidth
+          placeholder="Search for a city (e.g., San Francisco, Los Angeles, San Diego...)"
+          value={searchCity}
+          onChange={(e) => setSearchCity(e.target.value)}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              handleCitySearch();
+            }
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleCitySearch}
+                  disabled={!searchCity.trim() || searchingCity}
+                  sx={{ mr: 1 }}
+                >
+                  {searchingCity ? <CircularProgress size={16} /> : 'Search'}
+                </Button>
+                {searchedLocation && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleResetToCurrentLocation}
+                    sx={{ mr: 1 }}
+                  >
+                    Use My Location
+                  </Button>
+                )}
+              </InputAdornment>
+            ),
+          }}
+        />
+        {searchedLocation && (
+          <Alert severity="info" sx={{ mt: 1 }}>
+            Showing information for: <strong>{searchCity}</strong>
+          </Alert>
+        )}
+      </Box>
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <LocalFireDepartmentIcon /> Wildfire Map
@@ -320,6 +465,7 @@ const FireMap = () => {
 
       <Box sx={{ height: '600px', borderRadius: 1, overflow: 'hidden', mb: 2 }}>
         <MapContainer
+          key={`${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`}
           center={mapCenter}
           zoom={mapZoom}
           style={{ height: '100%', width: '100%' }}
@@ -330,11 +476,11 @@ const FireMap = () => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           
-          {/* Center map on user location */}
+          {/* Center map on location */}
           <MapCenter center={mapCenter} zoom={mapZoom} />
           
           {/* User location marker */}
-          {userLocation && (
+          {userLocation && !searchedLocation && (
             <Marker
               position={[userLocation.lat, userLocation.lng]}
               icon={L.icon({
@@ -356,6 +502,31 @@ const FireMap = () => {
                     Accuracy: ±{Math.round(userLocation.accuracy)}m
                   </Typography>
                 )}
+              </Popup>
+            </Marker>
+          )}
+
+          {/* Searched city marker */}
+          {searchedLocation && (
+            <Marker
+              position={[searchedLocation.lat, searchedLocation.lng]}
+              icon={L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+              })}
+            >
+              <Popup>
+                <Typography variant="subtitle2">
+                  <LocationOnIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'middle' }} />
+                  {searchCity}
+                </Typography>
+                <Typography variant="body2">
+                  {searchedLocation.lat.toFixed(6)}, {searchedLocation.lng.toFixed(6)}
+                </Typography>
               </Popup>
             </Marker>
           )}
@@ -451,9 +622,20 @@ const FireMap = () => {
       </Box>
 
       {/* Location Safety Info */}
-      {safetyInfo && userLocation && (
-        <Card sx={{ mt: 2, mb: 2, bgcolor: 'background.paper', border: '1px solid rgba(255, 68, 68, 0.2)' }}>
-          <CardContent>
+      {safetyInfo && (searchedLocation || userLocation) && (
+        <Card 
+          ref={safetyCardRef}
+          sx={{ 
+            mt: 2, 
+            mb: 2, 
+            bgcolor: 'background.paper', 
+            border: '1px solid rgba(255, 68, 68, 0.2)',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          <MouseGradient targetRef={safetyCardRef} enabled={true} />
+          <CardContent sx={{ position: 'relative', zIndex: 2 }}>
             <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <WarningIcon color="primary" /> Your Location Safety Information
             </Typography>
@@ -557,8 +739,16 @@ const FireMap = () => {
       )}
 
       {/* Legend */}
-      <Card sx={{ mt: 2 }}>
-        <CardContent>
+      <Card 
+        ref={legendCardRef}
+        sx={{ 
+          mt: 2,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <MouseGradient targetRef={legendCardRef} enabled={true} />
+        <CardContent sx={{ position: 'relative', zIndex: 2 }}>
           <Typography variant="subtitle2" gutterBottom>
             Fire Intensity Legend
           </Typography>
@@ -581,9 +771,9 @@ const FireMap = () => {
               </Box>
             ))}
           </Box>
-          {userLocation && (
+          {(searchedLocation || userLocation) && (
             <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              Showing fires within 50km of your location
+              Showing fires within 50km of {searchedLocation ? searchCity : 'your location'}
             </Typography>
           )}
         </CardContent>
@@ -597,6 +787,7 @@ const FireMap = () => {
           </Typography>
         </Box>
       )}
+      </Box>
     </Paper>
   );
 };

@@ -13,18 +13,19 @@ import {
 } from '@mui/material';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import MapIcon from '@mui/icons-material/Map';
+import HomeIcon from '@mui/icons-material/Home';
+import NotificationsIcon from '@mui/icons-material/Notifications';
 import FloatingChatbot from './FloatingChatbot';
+import Home from './Home';
 import ImageUpload from './ImageUpload';
 import FireMap from './FireMap';
-import FireSparks from './FireSparks';
+import Alerts from './Alerts';
 import { getWildfireStatus } from '../utils/api';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [status, setStatus] = useState(null);
   const [statusError, setStatusError] = useState(null);
-  const [sparkTrigger, setSparkTrigger] = useState(0);
-  const [tabBounds, setTabBounds] = useState(null);
   const tabsRef = React.useRef(null);
 
   useEffect(() => {
@@ -52,26 +53,12 @@ const Dashboard = () => {
 
   const handleTabChange = (event, newValue) => {
     if (newValue !== activeTab) {
-      // Get tab bounds for sparks
-      if (tabsRef.current) {
-        const rect = tabsRef.current.getBoundingClientRect();
-        setTabBounds({
-          left: rect.left,
-          top: rect.top,
-          width: rect.width,
-          height: rect.height,
-        });
-      }
-      setSparkTrigger(prev => prev + 1);
       setActiveTab(newValue);
     }
   };
 
   return (
     <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: 'background.default', position: 'relative' }}>
-      {/* Fire Sparks Effect */}
-      <FireSparks trigger={sparkTrigger} tabBounds={tabBounds} />
-      
       {/* App Bar */}
       <AppBar position="static" elevation={2}>
         <Toolbar>
@@ -89,7 +76,7 @@ const Dashboard = () => {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 20, pb: 4 }}>
+      <Container maxWidth="xl" sx={{ mt: 12, mb: 20, pb: 4 }}>
         {/* Status Alert */}
         {statusError && (
           <Alert severity="warning" sx={{ mb: 3 }}>
@@ -97,34 +84,68 @@ const Dashboard = () => {
           </Alert>
         )}
 
-        {/* Main Content Tabs */}
+        {/* Main Content Tabs - Fixed Round Navigation at Top */}
         <Paper 
           ref={tabsRef}
-          elevation={4} 
+          elevation={8} 
           sx={{ 
-            mb: 3,
+            position: 'fixed',
+            top: 80,
+            left: '50%',
+            transform: 'translateX(-50%)',
             bgcolor: 'background.paper',
-            border: '1px solid rgba(255, 68, 68, 0.42)',
-            borderRadius: 2,
+            border: '1px solid rgba(255, 68, 68, 0.3)',
+            borderRadius: '32px',
+            px: 2,
+            py: 1,
+            zIndex: 1000,
+            boxShadow: '0 4px 20px rgba(255, 68, 68, 0.2)',
           }}
         >
           <Tabs
             value={activeTab}
             onChange={handleTabChange}
-            indicatorColor="primary"
-            textColor="primary"
-            variant="fullWidth"
+            variant="standard"
             sx={{
+              minHeight: 'auto',
+              '& .MuiTabs-indicator': {
+                display: 'none',
+              },
               '& .MuiTab-root': {
+                minHeight: 'auto',
+                minWidth: 'auto',
+                px: 3,
+                py: 1.5,
+                mx: 0.75,
+                borderRadius: '24px',
                 color: 'text.secondary',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textTransform: 'none',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  bgcolor: 'rgba(255, 68, 68, 0.1)',
+                  color: 'primary.light',
+                },
                 '&.Mui-selected': {
-                  color: 'primary.main',
+                  color: 'white',
+                  bgcolor: 'primary.main',
+                  boxShadow: '0 2px 12px rgba(255, 68, 68, 0.5)',
+                  '&:hover': {
+                    bgcolor: 'primary.dark',
+                  },
+                },
+                '& .MuiTab-iconWrapper': {
+                  marginRight: 1,
+                  fontSize: '1.2rem',
                 },
               },
             }}
           >
-            <Tab label="Image Analysis" />
-            <Tab label="Fire Map" icon={<MapIcon />} iconPosition="start" />
+            <Tab label="Home" icon={<HomeIcon />} iconPosition="start" />
+            <Tab label="Analysis" />
+            <Tab label="Map" icon={<MapIcon />} iconPosition="start" />
+            <Tab label="Alerts" icon={<NotificationsIcon />} iconPosition="start" />
           </Tabs>
         </Paper>
 
@@ -132,13 +153,25 @@ const Dashboard = () => {
         <Grid container spacing={3}>
           {activeTab === 0 && (
             <Grid item xs={12}>
-              <ImageUpload />
+              <Home />
             </Grid>
           )}
 
           {activeTab === 1 && (
             <Grid item xs={12}>
+              <ImageUpload />
+            </Grid>
+          )}
+
+          {activeTab === 2 && (
+            <Grid item xs={12}>
               <FireMap />
+            </Grid>
+          )}
+
+          {activeTab === 3 && (
+            <Grid item xs={12}>
+              <Alerts />
             </Grid>
           )}
         </Grid>
