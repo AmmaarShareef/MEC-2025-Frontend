@@ -29,7 +29,6 @@ npm install
 2. Create a `.env` file in the root directory:
 ```env
 VITE_BACKEND_API_URL=http://localhost:8000
-VITE_GEMINI_API_KEY=AIzaSyCkt1dcG3QBnHyZZ8A2PoUJ4Ym6tpldQ8c
 ```
 
 **Note:** The frontend is fully interactive even without the backend or Gemini API key. Backend calls will show user-friendly error messages if the backend is not running.
