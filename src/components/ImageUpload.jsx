@@ -18,12 +18,8 @@ import {
   CardMedia,
   CardContent,
   Chip,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Divider,
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ImageIcon from '@mui/icons-material/Image';
 import InfoIcon from '@mui/icons-material/Info';
@@ -32,6 +28,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { uploadImage } from '../utils/api';
+import { saveImageToGitHub } from '../utils/github';
 import MouseGradient from './MouseGradient';
 
 const ImageUpload = () => {
@@ -173,34 +170,60 @@ const ImageUpload = () => {
     setResult(null);
 
     try {
-      // Upload without location
-      const uploadResponse = await uploadImage(selectedFile, {
-        timestamp: new Date().toISOString(),
-      });
+      // Upload to backend
+      let uploadResponse = null;
+      try {
+        uploadResponse = await uploadImage(selectedFile, {
+          timestamp: new Date().toISOString(),
+        });
+      } catch (err) {
+        // Backend might not be available, continue with demo analysis
+        console.log('Backend not available, using demo analysis');
+      }
 
-      setResult({
-        upload: uploadResponse,
-        message: 'Image uploaded successfully',
-      });
+      // Save image to GitHub (silently fail if token not configured)
+      try {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `${timestamp}-${selectedFile.name}`;
+        await saveImageToGitHub(selectedFile, filename);
+        setResult({
+          upload: uploadResponse,
+          message: 'Image uploaded successfully and saved to GitHub!',
+        });
+      } catch (githubErr) {
+        // GitHub save failed - silently continue if token not configured
+        console.error('GitHub save error:', githubErr);
+        // Only show message if it's not a token configuration issue
+        if (uploadResponse && !githubErr.message?.includes('token')) {
+          setResult({
+            upload: uploadResponse,
+            message: 'Image uploaded to backend. Failed to save to GitHub.',
+          });
+        }
+        // If token not configured, don't show any message - just continue
+      }
 
       // Add to previous uploads
       const newUpload = {
         id: Date.now(),
         filename: selectedFile.name,
         timestamp: new Date().toISOString(),
-        description: uploadResponse.description || uploadResponse.analysis || 'No description available',
+        description: uploadResponse?.description || uploadResponse?.analysis || 'No description available',
         preview: preview,
       };
       setPreviousUploads(prev => [newUpload, ...prev]);
 
       // Replace demo analysis with backend response if available
-      if (uploadResponse.analysis) {
+      if (uploadResponse?.analysis) {
         setAnalysis(uploadResponse.analysis);
         setShowDemoAnalysis(false);
-      } else if (uploadResponse.prediction) {
+      } else if (uploadResponse?.prediction) {
         const formattedAnalysis = formatPredictionAsAnalysis(uploadResponse.prediction);
         setAnalysis(formattedAnalysis);
         setShowDemoAnalysis(false);
+      } else {
+        // Show demo analysis
+        setShowDemoAnalysis(true);
       }
     } catch (err) {
       setError(err.userMessage || err.response?.data?.message || err.message || 'Failed to upload image. Please check your backend connection.');
@@ -518,49 +541,35 @@ const ImageUpload = () => {
                   )}
 
                   {(analysis || showDemoAnalysis) && (
-                    <Box sx={{ mb: 2 }}>
-                      <Accordion defaultExpanded={false} sx={{ boxShadow: 2, bgcolor: 'background.paper' }}>
-                        <AccordionSummary
-                          expandIcon={<ExpandMoreIcon />}
-                          sx={{
-                            bgcolor: 'background.default',
-                            '&:hover': {
-                              bgcolor: 'rgba(255, 68, 68, 0.1)',
-                            },
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                            <ImageIcon color="primary" />
-                            <Typography variant="h6" sx={{ flexGrow: 1 }}>
-                              Detailed Image Analysis
-                            </Typography>
-                            {showDemoAnalysis && !analysis && (
-                              <Chip label="Demo Data" size="small" color="info" />
-                            )}
-                          </Box>
-                        </AccordionSummary>
-                        <AccordionDetails sx={{ bgcolor: 'background.default', pt: 3 }}>
-                          <Typography 
-                            variant="body2" 
-                            sx={{ 
-                              whiteSpace: 'pre-wrap',
-                              lineHeight: 1.8,
-                              '& strong': {
-                                color: 'primary.main',
-                                fontWeight: 600,
-                              },
-                            }}
-                            component="div"
-                            dangerouslySetInnerHTML={{
-                              __html: (analysis || getDemoAnalysis())
-                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                .replace(/\n\n/g, '<br/><br/>')
-                                .replace(/\n/g, '<br/>')
-                            }}
-                          />
-                        </AccordionDetails>
-                      </Accordion>
-                    </Box>
+                    <Paper sx={{ p: 3, mb: 2, bgcolor: 'background.default', border: '1px solid rgba(255, 68, 68, 0.2)' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <ImageIcon color="primary" />
+                        <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                          Detailed Image Analysis
+                        </Typography>
+                        {showDemoAnalysis && !analysis && (
+                          <Chip label="Demo Data" size="small" color="info" />
+                        )}
+                      </Box>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: 1.8,
+                          '& strong': {
+                            color: 'primary.main',
+                            fontWeight: 600,
+                          },
+                        }}
+                        component="div"
+                        dangerouslySetInnerHTML={{
+                          __html: (analysis || getDemoAnalysis())
+                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                            .replace(/\n\n/g, '<br/><br/>')
+                            .replace(/\n/g, '<br/>')
+                        }}
+                      />
+                    </Paper>
                   )}
 
                   {!result && !analysis && !showDemoAnalysis && (

@@ -28,8 +28,13 @@ const Chatbot = ({ inputValue = '', onMessageSent, onExit, sendTrigger = 0 }) =>
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const chatHistoryRef = useRef([]);
-  const pendingMessageRef = useRef(null);
   const lastSendTriggerRef = useRef(0);
+  const inputValueRef = useRef('');
+
+  // Update ref whenever inputValue prop changes (but don't trigger send)
+  useEffect(() => {
+    inputValueRef.current = inputValue;
+  }, [inputValue]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -66,7 +71,6 @@ const Chatbot = ({ inputValue = '', onMessageSent, onExit, sendTrigger = 0 }) =>
 
     setInput('');
     setLoading(true);
-    pendingMessageRef.current = null;
 
     // Add user message to UI
     const newUserMessage = { role: 'user', content: userMessage };
@@ -88,10 +92,20 @@ const Chatbot = ({ inputValue = '', onMessageSent, onExit, sendTrigger = 0 }) =>
       // Update chat history
       chatHistoryRef.current = [...chatHistoryRef.current, assistantMessage];
     } catch (err) {
-      // Instead of showing error, show "message received!" response
+      // Show helpful error message based on error type
+      let errorMessage = 'Message received! I\'m processing your request.';
+      
+      if (err.code === 'ECONNREFUSED' || err.message?.includes('Network Error') || err.message?.includes('Failed to fetch')) {
+        errorMessage = 'Cannot connect to backend. Please start the Python backend server:\n\n1. Install dependencies: pip install -r requirements.txt\n2. Run: python api_server.py\n\nThe server should run on http://localhost:8000';
+      } else if (err.response) {
+        errorMessage = `Backend error: ${err.response.data?.detail || err.response.data?.message || 'Unknown error'}`;
+      } else if (err.message) {
+        errorMessage = `Error: ${err.message}`;
+      }
+      
       const assistantMessage = { 
         role: 'assistant', 
-        content: 'Message received! I\'m processing your request. Please ensure the backend is connected for full functionality.' 
+        content: errorMessage
       };
       setMessages(prev => [...prev, assistantMessage]);
       chatHistoryRef.current = [...chatHistoryRef.current, assistantMessage];
@@ -104,19 +118,19 @@ const Chatbot = ({ inputValue = '', onMessageSent, onExit, sendTrigger = 0 }) =>
     }
   };
 
-  // Handle message from floating input - only when sendTrigger changes (not on every keystroke)
+  // Handle message from floating input - ONLY when sendTrigger changes (not on every keystroke)
   useEffect(() => {
-    // Only process when sendTrigger changes, meaning a message was explicitly sent
-    if (sendTrigger > lastSendTriggerRef.current && inputValue && inputValue.trim()) {
+    // Only process when sendTrigger actually increments
+    if (sendTrigger > lastSendTriggerRef.current) {
       lastSendTriggerRef.current = sendTrigger;
-      const messageToSend = inputValue.trim();
-      if (messageToSend !== pendingMessageRef.current) {
-        pendingMessageRef.current = messageToSend;
+      // Get the current input value from ref (captured at the time of send)
+      const messageToSend = inputValueRef.current?.trim();
+      if (messageToSend) {
         handleSend(messageToSend);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sendTrigger, inputValue]);
+  }, [sendTrigger]); // Only depend on sendTrigger, NOT inputValue
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {

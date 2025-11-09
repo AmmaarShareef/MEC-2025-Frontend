@@ -223,14 +223,24 @@ const getMockSafetyInfo = (lat, lng) => {
 
 // Send chat message to backend
 // Backend expects: { "message": "string" }
-// Backend returns: string or { "response": "string" } or { "message": "string" }
+// Backend returns: { "response": "string" }
 export const sendChatMessage = async (message) => {
   try {
     const response = await apiClient.post('/api/chat', {
       message: message
     });
-    // Return the response data - backend should return a string or object with response/message field
-    return response.data;
+    // Backend returns { "response": "string" }
+    const responseData = response.data;
+    // Handle different response formats
+    if (typeof responseData === 'string') {
+      return responseData;
+    } else if (responseData.response) {
+      return responseData.response;
+    } else if (responseData.message) {
+      return responseData.message;
+    } else {
+      return JSON.stringify(responseData);
+    }
   } catch (error) {
     console.error('Chat message error:', error);
     if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {

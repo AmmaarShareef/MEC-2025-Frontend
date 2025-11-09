@@ -5,7 +5,7 @@
  * 
  * @author Ammaar Shareef
  */
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -32,6 +32,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import MouseGradient from './MouseGradient';
 import { sendChatMessage } from '../utils/api';
+import { appendAlertToCSV, fetchAlertsFromCSV } from '../utils/github';
 
 const Alerts = () => {
   const [alertForm, setAlertForm] = useState({
@@ -49,8 +50,8 @@ const Alerts = () => {
   const submitBoxRef = useRef(null);
   const alertsListRef = useRef(null);
 
-  // Demo alerts data
-  const [alerts] = useState([
+  // Alerts data - loaded from CSV, with demo fallback
+  const [alerts, setAlerts] = useState([
     {
       id: 1,
       location: 'Northern Valley, CA',
@@ -172,12 +173,34 @@ const Alerts = () => {
       try {
         await sendChatMessage(`ALERT: ${JSON.stringify(alertData)}`);
       } catch (err) {
-        // Backend might not be available, that's okay for demo
-        console.log('Backend not available, alert saved locally');
+        // Backend might not be available, that's okay
+        console.log('Backend not available');
       }
 
-      // Success
-      setSubmitSuccess(true);
+      // Save to CSV file in GitHub
+      try {
+        await appendAlertToCSV({
+          ...alertData,
+          status: 'pending',
+          verified: false,
+        });
+        
+        // Reload alerts from CSV
+        await loadAlertsFromCSV();
+        
+        setSubmitSuccess(true);
+      } catch (githubErr) {
+        console.error('Error saving to CSV:', githubErr);
+        // Still show success if backend received it
+        if (githubErr.message?.includes('token')) {
+          setSubmitSuccess(true);
+          // Show warning about token
+          setError('Alert submitted to backend. GitHub token not configured - alert not saved to CSV file.');
+        } else {
+          setError('Alert submitted to backend but failed to save to CSV. ' + (githubErr.message || ''));
+        }
+      }
+
       setAlertForm({
         location: '',
         severity: 'medium',
@@ -189,6 +212,7 @@ const Alerts = () => {
       // Reset success message after 5 seconds
       setTimeout(() => {
         setSubmitSuccess(false);
+        setError(null);
       }, 5000);
     } catch (error) {
       console.error('Error submitting alert:', error);
